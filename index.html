@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>متابعة الحركات</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#12303f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="الحركات">
+<style>
+:root{--bg:#ffffff;--board:#12303f;--board-ink:#f4f7f9;--brand:#0e7c86;--ink:#12303f;--ink-2:#4a6270;--card:#fff;--line:#d5dee4}
+@media (prefers-color-scheme:dark){:root{--bg:#152a37;--ink:#e8eef2;--ink-2:#9db2bf;--card:#152a37;--line:#2c4352}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--board)}
+body{display:flex;flex-direction:column;font-family:'IBM Plex Sans Arabic',Tahoma,'Segoe UI',sans-serif;color:var(--ink)}
+#wrap{flex:1;min-height:0;background:var(--bg);padding-bottom:env(safe-area-inset-bottom,0px);display:flex;flex-direction:column}
+iframe{flex:1;width:100%;border:0;background:var(--bg)}
+#load{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:5;font-size:16px}
+#load .sp{width:34px;height:34px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--brand)}
+@media (prefers-reduced-motion:no-preference){#load .sp{animation:r 1s linear infinite}}
+@keyframes r{to{transform:rotate(360deg)}}
+#err{display:none;position:fixed;inset:0;background:var(--bg);align-items:center;justify-content:center;text-align:center;padding:24px;z-index:6;line-height:1.7}
+#install{display:none;align-items:center;gap:10px;background:var(--board);color:var(--board-ink);padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+#install .t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35}
+#install .t b{font-size:15px} #install .t span{font-size:12px;opacity:.8}
+button{font:inherit;cursor:pointer}
+.go{background:#fff;color:#12303f;border:0;border-radius:10px;padding:8px 18px;min-height:40px;font-weight:700}
+.x{background:none;border:0;color:inherit;font-size:24px;line-height:1;padding:4px 8px;opacity:.8}
+dialog{border:0;border-radius:16px;padding:18px;width:min(92vw,440px);background:var(--card);color:var(--ink);font-size:16px;line-height:1.6}
+dialog::backdrop{background:rgba(5,15,22,.55)}
+dialog h3{margin:0 0 4px} ol{margin:10px 0;padding-inline-start:22px} li{margin:8px 0}
+.row{display:flex;gap:8px;margin-top:12px}
+.btn{border:0;border-radius:10px;padding:10px 16px;min-height:44px;font-weight:600;background:var(--brand);color:#fff}
+.btn.g{background:transparent;border:1px solid var(--line);color:var(--ink)}
+</style>
+</head>
+<body>
+<div id="wrap"><iframe id="app" title="متابعة الحركات" allow="clipboard-write" referrerpolicy="no-referrer"></iframe></div>
+<div id="load"><div class="sp"></div><div>جاري فتح التطبيق…</div></div>
+<div id="err"><div><h2>الرابط مش متظبط</h2><p>افتح ملف <b>config.js</b> والصق رابط التطبيق (الـ Web app URL اللي بينتهي بـ /exec)، واحفظ الملف وارفع الفولدر تاني.</p></div></div>
+<div id="install">
+  <div class="t"><b>نزّل التطبيق على موبايلك</b><span>يفتح من الشاشة الرئيسية زي أي تطبيق</span></div>
+  <button class="go" id="ibtn">تنزيل</button>
+  <button class="x" id="ix" aria-label="إغلاق">×</button>
+</div>
+<dialog id="dlg"></dialog>
+<script src="config.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+/* ---- فتح التطبيق جوه الإطار ---- */
+(function(){
+  if(typeof APP_URL!=='string'||!/^https:\/\/script\.google\.com\/(a\/[^/]+\/)?macros\/s\/[\w-]+\/exec/.test(APP_URL)){ $('#load').style.display='none'; $('#err').style.display='flex'; return; }
+  const f=$('#app'); f.addEventListener('load',()=>{ $('#load').style.display='none'; });
+  f.src=APP_URL+(APP_URL.includes('?')?'&':'?')+'wrapped=1';
+  setTimeout(()=>{ $('#load').style.display='none'; },15000);
+})();
+/* ---- تثبيت التطبيق ---- */
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+const UA=navigator.userAgent, IOS=/iPhone|iPad|iPod/.test(UA)||(/Macintosh/.test(UA)&&navigator.maxTouchPoints>1), ANDROID=/Android/.test(UA);
+let DEFERRED=null;
+function standalone(){ try{ return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true; }catch(e){ return false; } }
+function hidden(){ try{ const v=localStorage.getItem('mv_inst'); if(v==='done') return true; return !!v&&Date.now()-Number(v)<6048e5; }catch(e){ return false; } }
+function update(){ $('#install').style.display=((IOS||ANDROID)&&!standalone()&&!hidden())?'flex':'none'; }
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); DEFERRED=e; update(); });
+window.addEventListener('appinstalled',()=>{ try{localStorage.setItem('mv_inst','done')}catch(e){} DEFERRED=null; update(); });
+$('#ix').addEventListener('click',()=>{ try{localStorage.setItem('mv_inst',String(Date.now()))}catch(e){} update(); });
+$('#ibtn').addEventListener('click',()=>{
+  if(DEFERRED){ DEFERRED.prompt(); DEFERRED.userChoice.finally(()=>{ DEFERRED=null; update(); }); return; }   // تثبيت بضغطة واحدة (أندرويد/Chrome)
+  const steps=IOS
+   ? '<li>افتح الرابط في <b>Safari</b> (لو فتحته من واتساب، اضغط "فتح في Safari" الأول).</li><li>اضغط زر المشاركة (المربع اللي فيه سهم لفوق).</li><li>اختار <b>إضافة إلى الشاشة الرئيسية</b>.</li><li>اضغط <b>إضافة</b>.</li>'
+   : '<li>افتح الرابط في <b>Chrome</b> (لو فتحته من واتساب، اضغط ⋮ ثم "فتح في Chrome").</li><li>اضغط القائمة <b>⋮</b> فوق.</li><li>اختار <b>تثبيت التطبيق</b> أو <b>إضافة إلى الشاشة الرئيسية</b>.</li><li>اضغط <b>تثبيت</b>.</li>';
+  const d=$('#dlg'); d.innerHTML='<form method="dialog"><h3>تنزيل التطبيق</h3><p style="margin:0;color:var(--ink-2)">'+(IOS?'آيفون مبيسمحش بالتنزيل بضغطة واحدة. اعمل الخطوات دي مرة واحدة:':'اعمل الخطوات دي مرة واحدة:')+'</p><ol>'+steps+'</ol><div class="row"><button class="btn" value="ok">تمام، نزّلته</button><button class="btn g" value="later">بعدين</button></div></form>';
+  d.onclose=()=>{ if(d.returnValue==='ok'){ try{localStorage.setItem('mv_inst','done')}catch(e){} update(); } };
+  d.showModal();
+});
+update();
+</script>
+</body>
+</html>
